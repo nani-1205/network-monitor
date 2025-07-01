@@ -20,27 +20,38 @@ def index():
 
 @app.route('/api/hosts')
 def get_hosts():
+    """
+    Robustly scans the database for all unique IP addresses seen,
+    both as a source and a destination.
+    """
     try:
-        pipeline = [
-            {"$match": {"src_ip": {"$ne": "0.0.0.0"}, "dst_ip": {"$ne": "0.0.0.0"}}},
-            {'$group': {'_id': '$src_ip'}},
-            {'$group': {'_id': None, 'src_ips': {'$addToSet': '$_id'}}},
-            {'$lookup': {
-                'from': MONGO_COLLECTION_NAME,
-                'pipeline': [{'$group': {'_id': '$dst_ip'}}],
-                'as': 'dst_docs'
-            }},
-            {'$project': {
-                'all_ips': {'$setUnion': ['$src_ips', '$dst_docs._id']}
-            }}
-        ]
-        result = list(collection.aggregate(pipeline))
-        if result and result[0]['all_ips']:
-            ips = sorted([ip for ip in result[0]['all_ips'] if ip])
-            return jsonify(ips)
-        return jsonify([])
+        # ++++++++ THE DEFINITIVE FIX FOR HOST DISCOVERY ++++++++
+        
+        # 1. Create a query that finds documents where either src_ip or dst_ip is valid
+        query = {
+            "$and": [
+                {"src_ip": {"$ne": "0.0.0.0", "$exists": True}},
+                {"dst_ip": {"$ne": "0.0.0.0", "$exists": True}}
+            ]
+        }
+        
+        # 2. Use the 'distinct' method which is highly optimized for this task
+        source_ips = collection.distinct("src_ip", query)
+        dest_ips = collection.distinct("dst_ip", query)
+
+        # 3. Combine the lists and get unique values
+        all_ips = set(source_ips) | set(dest_ips) # The '|' operator is a set union
+
+        # 4. Filter out any potential None values and sort
+        valid_ips = sorted([ip for ip in all_ips if ip])
+
+        return jsonify(valid_ips)
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
     except Exception as e:
+        print(f"Error in get_hosts: {e}")
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/traffic_data')
 def get_traffic_data():
@@ -70,7 +81,6 @@ def get_traffic_data():
         if not flows:
             return jsonify({"nodes": [], "links": []})
 
-        # --- Build Node List and Name Map ---
         all_ips = set()
         for flow in flows:
             all_ips.add(flow['source'])
@@ -83,9 +93,6 @@ def get_traffic_data():
             nodes.append({"name": name})
             node_name_map[ip] = name
 
-        # ++++++++ THE DEFINITIVE FIX: CONSOLIDATE CYCLES ++++++++
-        
-        # 1. Create a lookup map for fast access
         flow_map = {(f['source'], f['target']): f for f in flows}
         processed_flows = set()
         consolidated_links = []
@@ -93,20 +100,16 @@ def get_traffic_data():
         for flow in flows:
             source, target = flow['source'], flow['target']
             
-            # Skip if we've already handled this flow as part of a pair
             if (source, target) in processed_flows:
                 continue
 
-            # Look for the reverse flow
             reverse_flow = flow_map.get((target, source))
 
             if reverse_flow:
-                # CYCLE DETECTED: Consolidate into one link
                 combined_value = flow['value'] + reverse_flow['value']
-                # Clean up protocol strings
                 protocol1 = flow['protocol'].strip(', ')
                 protocol2 = reverse_flow['protocol'].strip(', ')
-                combined_protocol = f"{protocol1} <-> {protocol2}"
+                combined_protocol = f"{protocol1} <-> {protocol2}" if protocol1 != protocol2 else protocol1
 
                 consolidated_links.append({
                     "source": node_name_map[source],
@@ -114,18 +117,15 @@ def get_traffic_data():
                     "value": combined_value,
                     "protocol": combined_protocol
                 })
-                # Mark both directions as processed
                 processed_flows.add((source, target))
                 processed_flows.add((target, source))
             else:
-                # NO CYCLE: This is a one-way link
                 consolidated_links.append({
                     "source": node_name_map[source],
                     "target": node_name_map[target],
                     "value": flow['value'],
                     "protocol": flow['protocol'].strip(', ')
                 })
-                # Mark as processed
                 processed_flows.add((source, target))
 
         return jsonify({"nodes": nodes, "links": consolidated_links})
