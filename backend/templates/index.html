@@ -5,16 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Network Analytics Report</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    
-    <!-- Link to the FULL build of ECharts which includes the Sankey component -->
     <script src="{{ url_for('static', filename='js/echarts.js') }}"></script>
-
 </head>
 <body>
     <div class="container">
         <header>
             <h1>Network Analytics Report</h1>
             <div class="controls">
+                <!-- NEW BUTTON FOR CLEARING FOCUS -->
+                <button id="show-all-btn" class="hidden">Show All Traffic</button>
                 <button id="refresh-btn">Refresh Data</button>
             </div>
         </header>
@@ -22,13 +21,12 @@
         <main>
             <div class="sidebar">
                 <h2>Discovered Hosts</h2>
-                <p>Check the boxes for IPs that are servers.</p>
+                <p>Check the boxes for IPs that are servers.<br>Click a host to focus.</p>
                 <div id="host-list">
                     <p>Loading hosts...</p>
                 </div>
             </div>
             <div class="content">
-                <!-- This div is the container where the chart will be drawn -->
                 <div id="sankey-chart"></div>
                  <div id="loading-message" class="hidden">
                     <p>Loading traffic data... If this persists, the capture script may not be running or no traffic has been detected yet.</p>
@@ -37,7 +35,6 @@
         </main>
     </div>
 
-    <!-- Link to our custom JavaScript file that will draw the chart -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

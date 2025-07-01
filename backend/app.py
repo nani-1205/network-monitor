@@ -20,48 +20,45 @@ def index():
 
 @app.route('/api/hosts')
 def get_hosts():
-    """
-    Robustly scans the database for all unique IP addresses seen,
-    both as a source and a destination.
-    """
     try:
-        # ++++++++ THE DEFINITIVE FIX FOR HOST DISCOVERY ++++++++
-        
-        # 1. Create a query that finds documents where either src_ip or dst_ip is valid
         query = {
             "$and": [
                 {"src_ip": {"$ne": "0.0.0.0", "$exists": True}},
                 {"dst_ip": {"$ne": "0.0.0.0", "$exists": True}}
             ]
         }
-        
-        # 2. Use the 'distinct' method which is highly optimized for this task
         source_ips = collection.distinct("src_ip", query)
         dest_ips = collection.distinct("dst_ip", query)
-
-        # 3. Combine the lists and get unique values
-        all_ips = set(source_ips) | set(dest_ips) # The '|' operator is a set union
-
-        # 4. Filter out any potential None values and sort
+        all_ips = set(source_ips) | set(dest_ips)
         valid_ips = sorted([ip for ip in all_ips if ip])
-
         return jsonify(valid_ips)
-        # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     except Exception as e:
         print(f"Error in get_hosts: {e}")
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/api/traffic_data')
 def get_traffic_data():
     server_ips = request.args.getlist('servers[]')
+    focus_ip = request.args.get('focus_ip', None)
 
     pipeline = [
         {"$match": {
             "src_ip": {"$ne": None, "$exists": True, "$ne": "0.0.0.0"},
             "dst_ip": {"$ne": None, "$exists": True, "$ne": "0.0.0.0"}
-        }},
+        }}
+    ]
+
+    if focus_ip:
+        pipeline.append({
+            "$match": {
+                "$or": [
+                    {"src_ip": focus_ip},
+                    {"dst_ip": focus_ip}
+                ]
+            }
+        })
+
+    pipeline.extend([
         {"$group": {
             "_id": {"source": "$src_ip", "target": "$dst_ip"},
             "value": {"$sum": "$size"},
@@ -74,7 +71,7 @@ def get_traffic_data():
                 "in": {"$concat": ["$$value", "$$this", ", "]}
             }}
         }}
-    ]
+    ])
 
     try:
         flows = list(collection.aggregate(pipeline))
