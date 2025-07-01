@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Analytics Report</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Apache ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.3.3/dist/echarts.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Network Analytics Report</h1>
+            <div class="controls">
+                <button id="refresh-btn">Refresh Data</button>
+            </div>
+        </header>
+
+        <main>
+            <div class="sidebar">
+                <h2>Discovered Hosts</h2>
+                <p>Check the boxes for IPs that are servers.</p>
+                <div id="host-list">
+                    <p>Loading hosts...</p>
+                </div>
+            </div>
+            <div class="content">
+                <div id="sankey-chart"></div>
+                 <div id="loading-message" class="hidden">
+                    <p>Loading traffic data... If this persists, the capture script may not be running or no traffic has been detected yet.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

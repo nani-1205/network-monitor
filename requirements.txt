@@ -1,0 +1,9 @@
+
+#### `requirements.txt`
+
+```text
+flask
+pymongo
+python-dotenv
+scapy
+echarts-python

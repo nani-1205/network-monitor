@@ -1,0 +1,114 @@
+/* Inspired by the video's dark, futuristic UI */
+:root {
+    --bg-color: #0d1a2e;
+    --text-color: #cdd6f4;
+    --border-color: #313a50;
+    --primary-color: #00e5ff;
+    --accent-color-red: #f44336;
+    --accent-color-blue: #2196f3;
+    --accent-color-green: #4caf50;
+    --font-family: 'Segoe UI', 'Roboto', sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-family);
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: #112240;
+}
+
+header h1 {
+    font-size: 1.5em;
+    margin: 0;
+    color: var(--primary-color);
+    text-shadow: 0 0 5px var(--primary-color);
+}
+
+button {
+    background-color: var(--border-color);
+    color: var(--text-color);
+    border: 1px solid var(--primary-color);
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+button:hover {
+    background-color: #313a50;
+    box-shadow: 0 0 8px var(--primary-color);
+}
+
+main {
+    display: flex;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.sidebar {
+    width: 250px;
+    padding: 20px;
+    border-right: 1px solid var(--border-color);
+    overflow-y: auto;
+    background-color: #112240;
+}
+
+.sidebar h2 {
+    margin-top: 0;
+    color: var(--primary-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+#host-list .host-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+#host-list input {
+    margin-right: 10px;
+}
+
+.content {
+    flex-grow: 1;
+    padding: 20px;
+    position: relative;
+}
+
+#sankey-chart {
+    width: 100%;
+    height: 100%;
+}
+
+#loading-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 20px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.hidden {
+    display: none;
+}
