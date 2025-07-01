@@ -3,23 +3,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const refreshBtn = document.getElementById('refresh-btn');
     const loadingMessage = document.getElementById('loading-message');
 
-    // Initialize ECharts instance
     const chartDom = document.getElementById('sankey-chart');
     const myChart = echarts.init(chartDom);
     let chartOption;
 
-    // --- Core Functions ---
-
-    /**
-     * Fetches all unique hosts from the backend and populates the sidebar.
-     */
     async function loadHosts() {
         try {
             const response = await fetch('/api/hosts');
             if (!response.ok) throw new Error('Failed to fetch hosts');
             const hosts = await response.json();
             
-            hostListDiv.innerHTML = ''; // Clear previous list
+            hostListDiv.innerHTML = '';
             if (hosts.length === 0) {
                 hostListDiv.innerHTML = '<p>No hosts detected yet.</p>';
                 return;
@@ -35,7 +29,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 hostListDiv.appendChild(item);
             });
 
-            // Add event listeners to checkboxes to trigger a chart refresh on change
             document.querySelectorAll('input[name="server"]').forEach(checkbox => {
                 checkbox.addEventListener('change', fetchAndDrawChart);
             });
@@ -46,14 +39,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    /**
-     * Fetches traffic data and renders the Sankey chart.
-     */
     async function fetchAndDrawChart() {
         loadingMessage.classList.remove('hidden');
         myChart.showLoading();
 
-        // Get the list of IPs marked as servers
         const serverCheckboxes = document.querySelectorAll('input[name="server"]:checked');
         const serverIPs = Array.from(serverCheckboxes).map(cb => cb.value);
         const serverParams = new URLSearchParams();
@@ -68,17 +57,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!data.nodes || data.nodes.length === 0) {
                 myChart.hideLoading();
                 loadingMessage.classList.add('hidden');
-                 myChart.clear(); // Clear previous chart
-                // Display a message in the chart area
+                myChart.clear();
                 myChart.setOption({
                     title: {
                         text: 'No Traffic Data Available',
                         subtext: 'Please wait for the capture script to log some network activity.',
                         left: 'center',
                         top: 'center',
-                        textStyle: {
-                            color: '#cdd6f4'
-                        }
+                        textStyle: { color: '#cdd6f4' }
                     }
                 });
                 return;
@@ -94,12 +80,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     triggerOn: 'mousemove',
                     formatter: function (params) {
                         if (params.dataType === 'edge') {
-                            // Tooltip for links (edges)
                             return `${params.data.source.replace(/\[C\] |\[S\] /g, '')} → ${params.data.target.replace(/\[C\] |\[S\] /g, '')}<br/>` +
                                    `Protocol: <strong>${params.data.protocol}</strong><br/>` +
                                    `Data: <strong>${(params.data.value / 1024).toFixed(2)} KB</strong>`;
                         }
-                        // Tooltip for nodes
                         return `Host: <strong>${params.name.replace(/\[C\] |\[S\] /g, '')}</strong>`;
                     }
                 },
@@ -107,26 +91,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     {
                         type: 'sankey',
                         layout: 'none',
-                        emphasis: {
-                            focus: 'adjacency'
-                        },
+                        circularLayout: true, // <-- THE FIX FOR CYCLES
+                        emphasis: { focus: 'adjacency' },
                         data: data.nodes,
                         links: data.links,
-                        // Styling inspired by the video
-                        lineStyle: {
-                            color: 'source',
-                            curveness: 0.5,
-                            opacity: 0.6
-                        },
-                        label: {
-                            color: '#cdd6f4',
-                            fontFamily: 'Roboto, sans-serif'
-                        },
-                        nodeAlign: 'justify', // Aligns nodes vertically
-                        itemStyle: {
-                            color: '#00e5ff', // Default node color
-                            borderColor: '#00e5ff'
-                        },
+                        lineStyle: { color: 'source', curveness: 0.5, opacity: 0.6 },
+                        label: { color: '#cdd6f4', fontFamily: 'Roboto, sans-serif' },
+                        nodeAlign: 'justify',
+                        itemStyle: { color: '#00e5ff', borderColor: '#00e5ff' },
                     }
                 ]
             };
@@ -143,17 +115,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- Initial Load ---
     refreshBtn.addEventListener('click', () => {
         loadHosts();
         fetchAndDrawChart();
     });
 
-    // Initial data load on page start
     loadHosts();
     fetchAndDrawChart();
     
-    // Make chart responsive
     window.addEventListener('resize', () => {
         myChart.resize();
     });

@@ -2,9 +2,7 @@ import os
 from flask import Flask, render_template, jsonify, request
 from pymongo import MongoClient
 from dotenv import load_dotenv
-from collections import defaultdict
 
-# --- Flask & DB Setup ---
 app = Flask(__name__)
 load_dotenv()
 
@@ -16,20 +14,15 @@ client = MongoClient(MONGO_URI)
 db = client[MONGO_DB_NAME]
 collection = db[MONGO_COLLECTION_NAME]
 
-# --- Routes ---
 @app.route('/')
 def index():
-    """Render the main dashboard page."""
     return render_template('index.html')
 
 @app.route('/api/hosts')
 def get_hosts():
-    """
-    Scans the database for all unique IP addresses seen.
-    This acts as our network discovery.
-    """
     try:
         pipeline = [
+            {'$match': {"src_ip": {"$ne": "0.0.0.0"}, "dst_ip": {"$ne": "0.0.0.0"}}},
             {'$group': {'_id': '$src_ip'}},
             {'$group': {'_id': None, 'src_ips': {'$addToSet': '$_id'}}},
             {'$lookup': {
@@ -49,16 +42,15 @@ def get_hosts():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/api/traffic_data')
 def get_traffic_data():
-    """
-    Aggregates traffic data from MongoDB to be used in the Sankey diagram.
-    """
     server_ips = request.args.getlist('servers[]')
 
     pipeline = [
-        {"$match": {"src_ip": {"$ne": None, "$exists": True}, "dst_ip": {"$ne": None, "$exists": True}}},
+        {"$match": {
+            "src_ip": {"$ne": None, "$exists": True, "$ne": "0.0.0.0"},
+            "dst_ip": {"$ne": None, "$exists": True, "$ne": "0.0.0.0"}
+        }},
         {"$group": {
             "_id": {"source": "$src_ip", "target": "$dst_ip", "protocol": "$protocol"},
             "value": {"$sum": "$size"}
@@ -74,36 +66,28 @@ def get_traffic_data():
         if not flows:
             return jsonify({"nodes": [], "links": []})
 
-        # --- Process data for Sankey format ---
         all_ips = set()
         for flow in flows:
             all_ips.add(flow['source'])
             all_ips.add(flow['target'])
             
-        # 1. Build the nodes array first with the modified names.
         nodes = []
-        # 2. Create a lookup map to find the final node name from an original IP.
         node_name_map = {} 
         
         for ip in sorted(list(all_ips)):
-            if ip in server_ips:
-                name = f"[S] {ip}"
-            else:
-                name = f"[C] {ip}"
+            name = f"[S] {ip}" if ip in server_ips else f"[C] {ip}"
             nodes.append({"name": name})
-            node_name_map[ip] = name # Map original IP to the final name
+            node_name_map[ip] = name
 
-        # 3. Build the links array using the lookup map to ensure names match exactly.
         links = []
         for flow in flows:
             source_ip = flow.get('source')
             target_ip = flow.get('target')
             
-            # Ensure both IPs are in our map before creating a link
             if source_ip in node_name_map and target_ip in node_name_map:
                 links.append({
-                    "source": node_name_map[source_ip], # Use the map to get the correct name
-                    "target": node_name_map[target_ip], # Use the map to get the correct name
+                    "source": node_name_map[source_ip],
+                    "target": node_name_map[target_ip],
                     "value": flow['value'],
                     "protocol": flow['protocol']
                 })
