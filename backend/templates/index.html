@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Network Analytics Report</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <!-- Include the ECharts library from a CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.3.3/dist/echarts.min.js"></script>
+    
+    <!-- Use the local ECharts library file instead of the CDN -->
+    <script src="{{ url_for('static', filename='js/lib/echarts.min.js') }}"></script>
+
 </head>
 <body>
     <div class="container">
