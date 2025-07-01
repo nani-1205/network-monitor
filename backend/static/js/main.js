@@ -70,15 +70,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            // ++++++++ VISUAL ENHANCEMENT: DYNAMIC NODE COLORING ++++++++
-            const clientColor = '#00e5ff'; // Teal for clients
-            const serverColor = '#ff4b5c'; // Red/Pink for servers
+            const clientColor = '#00e5ff';
+            const serverColor = '#ff4b5c';
             data.nodes.forEach(node => {
                 node.itemStyle = {
                     color: node.name.startsWith('[S]') ? serverColor : clientColor
                 };
+                // Remove the prefix for cleaner display
+                node.name = node.name.replace(/\[C\] |\[S\] /g, '');
             });
-            // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            // Also clean up link names
+             data.links.forEach(link => {
+                link.source = link.source.replace(/\[C\] |\[S\] /g, '');
+                link.target = link.target.replace(/\[C\] |\[S\] /g, '');
+            });
+
 
             chartOption = {
                 title: {
@@ -89,34 +95,45 @@ document.addEventListener('DOMContentLoaded', function() {
                     trigger: 'item',
                     triggerOn: 'mousemove',
                     formatter: function (params) {
-                        if (params.dataType === 'edge') {
-                            return `${params.data.source.replace(/\[C\] |\[S\] /g, '')} → ${params.data.target.replace(/\[C\] |\[S\] /g, '')}<br/>` +
+                         if (params.dataType === 'edge') {
+                            return `${params.data.source} → ${params.data.target}<br/>` +
                                    `Protocol(s): <strong>${params.data.protocol}</strong><br/>` +
                                    `Data: <strong>${(params.data.value / 1024).toFixed(2)} KB</strong>`;
                         }
-                        return `Host: <strong>${params.name.replace(/\[C\] |\[S\] /g, '')}</strong>`;
+                        return `Host: <strong>${params.name}</strong>`;
                     }
                 },
                 series: [
                     {
                         type: 'sankey',
-                        emphasis: { focus: 'adjacency' },
                         data: data.nodes,
                         links: data.links,
                         
-                        // ++++++++ VISUAL ENHANCEMENT: LAYOUT AND LABELS ++++++++
-                        orient: 'vertical',  // Layout top-to-bottom
-                        nodeAlign: 'left',   // Align nodes to the left of their column
-                        label: {
-                            color: '#cdd6f4',
-                            fontFamily: 'Roboto, sans-serif',
-                            position: 'right', // Put labels to the right of the node
-                            distance: 10,      // Add some padding
-                        },
-                        // ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                        // ++++++++ GOOD VIEW CONFIGURATION ++++++++
+                        layout: 'none',       // Use the standard layout
+                        orient: 'horizontal', // Revert to left-to-right
+                        draggable: true,      // Allow user to drag nodes
+                        focusNodeAdjacency: 'allEdges', // Highlight all related nodes/links on hover
+                        
+                        // Increase vertical spacing between nodes
+                        nodeGap: 18,
 
-                        lineStyle: { color: 'source', curveness: 0.5, opacity: 0.5 },
-                        itemStyle: { borderWidth: 1, borderColor: '#aaa' },
+                        label: {
+                            color: '#fff',
+                            // Smartly position labels inside or outside
+                            position: 'right', 
+                            formatter: function (params) {
+                                // For large nodes, show label inside to save space
+                                if (params.value > 10000) { // Adjust this threshold as needed
+                                    return params.name;
+                                }
+                                return params.name;
+                            }
+                        },
+                        // +++++++++++++++++++++++++++++++++++++++++++
+
+                        lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.6 },
+                        itemStyle: { borderWidth: 1, borderColor: '#313a50' },
                     }
                 ]
             };
@@ -128,7 +145,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('Error fetching/drawing chart:', error);
             myChart.hideLoading();
-            loadingMessage.classList.remove('hidden');
+            loadingMessage.classList.add('hidden');
             loadingMessage.textContent = 'Error loading chart data. Please check the console and ensure the backend is running.';
         }
     }
