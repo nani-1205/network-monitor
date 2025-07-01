@@ -1,13 +1,19 @@
-/* Inspired by the video's dark, futuristic UI */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
 :root {
     --bg-color: #0d1a2e;
-    --text-color: #cdd6f4;
-    --border-color: #313a50;
     --primary-color: #00e5ff;
-    --accent-color-red: #ff4b5c;
-    --accent-color-blue: #2196f3;
-    --accent-color-green: #4caf50;
-    --font-family: 'Segoe UI', 'Roboto', sans-serif;
+    --secondary-color: #112240;
+    --border-color: #313a50;
+    --text-color: #cdd6f4;
+    --text-color-muted: #8892b0;
+    --accent-red: #ff4b5c;
+    --accent-green: #64ffda;
+    --font-family: 'Roboto', sans-serif;
+}
+
+* {
+    box-sizing: border-box;
 }
 
 body {
@@ -15,8 +21,8 @@ body {
     color: var(--text-color);
     font-family: var(--font-family);
     margin: 0;
-    padding: 0;
     font-size: 14px;
+    overflow: hidden;
 }
 
 .container {
@@ -29,31 +35,35 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 20px;
+    padding: 10px 25px;
     border-bottom: 1px solid var(--border-color);
-    background-color: #112240;
+    background-color: var(--secondary-color);
+    flex-shrink: 0;
 }
 
 header h1 {
-    font-size: 1.5em;
+    font-size: 1.6em;
     margin: 0;
-    color: var(--primary-color);
-    text-shadow: 0 0 5px var(--primary-color);
+    color: var(--accent-green);
+    text-shadow: 0 0 5px var(--accent-green);
+    font-weight: 400;
 }
 
 button {
-    background-color: var(--border-color);
+    background: transparent;
     color: var(--text-color);
-    border: 1px solid var(--primary-color);
-    padding: 8px 15px;
+    border: 1px solid var(--border-color);
+    padding: 8px 18px;
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.2s, box-shadow 0.2s;
+    font-size: 14px;
+    transition: all 0.2s ease-in-out;
 }
 
 button:hover {
-    background-color: #313a50;
-    box-shadow: 0 0 8px var(--primary-color);
+    background-color: var(--border-color);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
 }
 
 main {
@@ -63,37 +73,58 @@ main {
 }
 
 .sidebar {
-    width: 250px;
+    width: 260px;
     flex-shrink: 0;
     padding: 20px;
     border-right: 1px solid var(--border-color);
     overflow-y: auto;
-    background-color: #112240;
+    background-color: var(--secondary-color);
 }
 
 .sidebar h2 {
     margin-top: 0;
-    color: var(--primary-color);
+    font-size: 1.2em;
+    color: var(--accent-green);
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 10px;
+    font-weight: 400;
 }
 
 #host-list .host-item {
     display: flex;
     align-items: center;
-    margin-bottom: 8px;
-    white-space: nowrap;
+    margin-bottom: 2px;
 }
 
-#host-list input {
-    margin-right: 10px;
-    flex-shrink: 0;
+.host-label {
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 3px;
+    display: block;
+    width: 100%;
+    transition: background-color 0.2s, color 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-color-muted);
+}
+
+.host-label:hover {
+    background-color: var(--border-color);
+    color: var(--primary-color);
+}
+
+.host-label.active {
+    background-color: var(--primary-color);
+    color: var(--bg-color);
+    font-weight: 700;
 }
 
 .content {
     flex-grow: 1;
-    padding: 20px;
+    padding: 10px;
     position: relative;
+    background: var(--bg-color) url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMCIgaGVpZ2h0PSIzMCI+PHJlY3Qgd2lkdGg9IjMwIiBoZWlnaHQ9IjMwIiBmaWxsPSIjMGQxYTJlIj48L3JlY3Q+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iMiIgaGVpZ2h0PSIyIiBmaWxsPSIjMTMyNzQyIj48L3JlY3Q+PC9zdmc+');
 }
 
 #sankey-chart {
@@ -101,48 +132,12 @@ main {
     height: 100%;
 }
 
-#loading-message {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.7);
-    padding: 20px;
-    border-radius: 5px;
-    text-align: center;
-}
-
-.hidden {
-    display: none;
-}
-
-/* --- NEW STYLES FOR FOCUS MODE --- */
-
-.host-label {
-    cursor: pointer;
-    padding: 2px 4px;
-    border-radius: 3px;
-    display: block;
-    width: 100%;
-    transition: background-color 0.2s;
-}
-
-.host-label:hover {
-    background-color: var(--border-color);
-}
-
-.host-label.active {
-    background-color: var(--primary-color);
-    color: var(--bg-color);
-    font-weight: bold;
-}
-
 #show-all-btn {
     margin-right: 10px;
-    background-color: var(--accent-color-red);
-    border-color: var(--accent-color-red);
+    border-color: var(--accent-red);
+    color: var(--accent-red);
 }
-
 #show-all-btn:hover {
-    box-shadow: 0 0 8px var(--accent-color-red);
+    background-color: var(--accent-red);
+    color: var(--secondary-color);
 }
