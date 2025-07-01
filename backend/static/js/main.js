@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const response = await fetch(`/api/traffic_data?${serverParams.toString()}`);
             if (!response.ok) throw new Error('Failed to fetch traffic data');
             
-            const data = await response.json();
+            let data = await response.json();
             
             if (!data.nodes || data.nodes.length === 0) {
                 myChart.hideLoading();
@@ -70,6 +70,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            // ++++++++ VISUAL ENHANCEMENT: DYNAMIC NODE COLORING ++++++++
+            const clientColor = '#00e5ff'; // Teal for clients
+            const serverColor = '#ff4b5c'; // Red/Pink for servers
+            data.nodes.forEach(node => {
+                node.itemStyle = {
+                    color: node.name.startsWith('[S]') ? serverColor : clientColor
+                };
+            });
+            // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
             chartOption = {
                 title: {
                     text: 'LAN Traffic Flow',
@@ -81,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     formatter: function (params) {
                         if (params.dataType === 'edge') {
                             return `${params.data.source.replace(/\[C\] |\[S\] /g, '')} → ${params.data.target.replace(/\[C\] |\[S\] /g, '')}<br/>` +
-                                   `Protocol: <strong>${params.data.protocol}</strong><br/>` +
+                                   `Protocol(s): <strong>${params.data.protocol}</strong><br/>` +
                                    `Data: <strong>${(params.data.value / 1024).toFixed(2)} KB</strong>`;
                         }
                         return `Host: <strong>${params.name.replace(/\[C\] |\[S\] /g, '')}</strong>`;
@@ -90,27 +100,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 series: [
                     {
                         type: 'sankey',
-                        
-                        // THIS LINE HAS BEEN REMOVED
-                        // layout: 'none', 
-                        
-                        // This line will now work correctly without the conflict
-                        circularLayout: true,
-                        
                         emphasis: { focus: 'adjacency' },
                         data: data.nodes,
                         links: data.links,
-                        lineStyle: { color: 'source', curveness: 0.5, opacity: 0.6 },
-                        label: { color: '#cdd6f4', fontFamily: 'Roboto, sans-serif' },
-                        nodeAlign: 'justify',
-                        itemStyle: { color: '#00e5ff', borderColor: '#00e5ff' },
+                        
+                        // ++++++++ VISUAL ENHANCEMENT: LAYOUT AND LABELS ++++++++
+                        orient: 'vertical',  // Layout top-to-bottom
+                        nodeAlign: 'left',   // Align nodes to the left of their column
+                        label: {
+                            color: '#cdd6f4',
+                            fontFamily: 'Roboto, sans-serif',
+                            position: 'right', // Put labels to the right of the node
+                            distance: 10,      // Add some padding
+                        },
+                        // ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+                        lineStyle: { color: 'source', curveness: 0.5, opacity: 0.5 },
+                        itemStyle: { borderWidth: 1, borderColor: '#aaa' },
                     }
                 ]
             };
             
             myChart.hideLoading();
             loadingMessage.classList.add('hidden');
-            myChart.setOption(chartOption, true); // Added 'true' to ensure options are not merged
+            myChart.setOption(chartOption, true);
 
         } catch (error) {
             console.error('Error fetching/drawing chart:', error);
@@ -121,10 +134,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     refreshBtn.addEventListener('click', () => {
-        fetchAndDrawChart(); // Just redraw chart, no need to reload hosts
+        fetchAndDrawChart();
     });
 
-    // Initial load
     loadHosts().then(fetchAndDrawChart);
     
     window.addEventListener('resize', () => {
