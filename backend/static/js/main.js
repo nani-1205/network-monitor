@@ -101,10 +101,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
             chartOption = {
                 title: { text: currentFocusIP ? `Traffic for ${currentFocusIP}` : 'LAN Traffic Flow', textStyle: { color: '#cdd6f4' } },
-                tooltip: { trigger: 'item', triggerOn: 'mousemove',
+                tooltip: {
+                    trigger: 'item',
+                    triggerOn: 'mousemove',
                     formatter: function (params) {
-                         if (params.dataType === 'edge') {
-                            return `${params.data.source} → ${params.data.target}<br/>` + `Protocol(s): <strong>${params.data.protocol}</strong><br/>` + `Data: <strong>${(params.data.value / 1024).toFixed(2)} KB</strong>`;
+                        if (params.dataType === 'edge') {
+                            let portText = '';
+                            if (params.data.ports && params.data.ports.length > 0) {
+                                const portsToShow = params.data.ports.slice(0, 5).join(', ');
+                                const moreText = params.data.ports.length > 5 ? '...' : '';
+                                portText = `Ports: <strong>${portsToShow}${moreText}</strong><br/>`;
+                            }
+                            return `${params.data.source} → ${params.data.target}<br/>` +
+                                   `Protocol(s): <strong>${params.data.protocol}</strong><br/>` +
+                                   portText +
+                                   `Data: <strong>${(params.data.value / 1024).toFixed(2)} KB</strong>`;
                         }
                         return `Host: <strong>${params.name}</strong>`;
                     }
