@@ -29,7 +29,6 @@ def get_hosts():
     This acts as our network discovery.
     """
     try:
-        # Use an aggregation pipeline to find unique IPs efficiently
         pipeline = [
             {'$group': {'_id': '$src_ip'}},
             {'$group': {'_id': None, 'src_ips': {'$addToSet': '$_id'}}},
@@ -44,7 +43,6 @@ def get_hosts():
         ]
         result = list(collection.aggregate(pipeline))
         if result and result[0]['all_ips']:
-            # Filter out None or empty values and sort
             ips = sorted([ip for ip in result[0]['all_ips'] if ip])
             return jsonify(ips)
         return jsonify([])
@@ -57,39 +55,18 @@ def get_traffic_data():
     """
     Aggregates traffic data from MongoDB to be used in the Sankey diagram.
     """
-    # The UI will send a list of IPs marked as 'servers'
     server_ips = request.args.getlist('servers[]')
 
     pipeline = [
-        # STAGE 1: Filter out any documents that are missing an IP address.
-        # This prevents server-side errors if the data is incomplete.
-        {
-            "$match": {
-                "src_ip": {"$ne": None, "$exists": True},
-                "dst_ip": {"$ne": None, "$exists": True}
-            }
-        },
-        
-        # STAGE 2: Group the valid data to aggregate traffic size.
-        {
-            "$group": {
-                "_id": {
-                    "source": "$src_ip",
-                    "target": "$dst_ip",
-                    "protocol": "$protocol"
-                },
-                "value": {"$sum": "$size"} # Aggregate by total bytes
-            }
-        },
-        {
-            "$project": {
-                "_id": 0,
-                "source": "$_id.source",
-                "target": "$_id.target",
-                "protocol": "$_id.protocol",
-                "value": "$value"
-            }
-        }
+        {"$match": {"src_ip": {"$ne": None, "$exists": True}, "dst_ip": {"$ne": None, "$exists": True}}},
+        {"$group": {
+            "_id": {"source": "$src_ip", "target": "$dst_ip", "protocol": "$protocol"},
+            "value": {"$sum": "$size"}
+        }},
+        {"$project": {
+            "_id": 0, "source": "$_id.source", "target": "$_id.target",
+            "protocol": "$_id.protocol", "value": "$value"
+        }}
     ]
 
     try:
@@ -100,38 +77,37 @@ def get_traffic_data():
         # --- Process data for Sankey format ---
         all_ips = set()
         for flow in flows:
-            # We already filtered for nulls, but this is a safe double-check
-            if flow.get('source') and flow.get('target'):
-                all_ips.add(flow['source'])
-                all_ips.add(flow['target'])
-
-        # Nodes are all the unique IPs
-        nodes = [{"name": ip} for ip in sorted(list(all_ips))]
+            all_ips.add(flow['source'])
+            all_ips.add(flow['target'])
+            
+        # 1. Build the nodes array first with the modified names.
+        nodes = []
+        # 2. Create a lookup map to find the final node name from an original IP.
+        node_name_map = {} 
         
-        # Add labels to distinguish clients from servers in the visualization
-        for node in nodes:
-            if node["name"] in server_ips:
-                node["name"] = f"[S] {node['name']}" # [S] for Server
+        for ip in sorted(list(all_ips)):
+            if ip in server_ips:
+                name = f"[S] {ip}"
             else:
-                node["name"] = f"[C] {node['name']}" # [C] for Client
+                name = f"[C] {ip}"
+            nodes.append({"name": name})
+            node_name_map[ip] = name # Map original IP to the final name
 
-        # Links are the flows between nodes
+        # 3. Build the links array using the lookup map to ensure names match exactly.
         links = []
         for flow in flows:
-            # Check if source and target exist before creating a link
-            if not (flow.get('source') and flow.get('target')):
-                continue
-
-            source_name = f"[S] {flow['source']}" if flow['source'] in server_ips else f"[C] {flow['source']}"
-            target_name = f"[S] {flow['target']}" if flow['target'] in server_ips else f"[C] {flow['target']}"
-
-            links.append({
-                "source": source_name,
-                "target": target_name,
-                "value": flow['value'],
-                "protocol": flow['protocol']
-            })
-
+            source_ip = flow.get('source')
+            target_ip = flow.get('target')
+            
+            # Ensure both IPs are in our map before creating a link
+            if source_ip in node_name_map and target_ip in node_name_map:
+                links.append({
+                    "source": node_name_map[source_ip], # Use the map to get the correct name
+                    "target": node_name_map[target_ip], # Use the map to get the correct name
+                    "value": flow['value'],
+                    "protocol": flow['protocol']
+                })
+        
         return jsonify({"nodes": nodes, "links": links})
 
     except Exception as e:
@@ -139,5 +115,4 @@ def get_traffic_data():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    # Changed host to 0.0.0.0 to be accessible from other machines on the network
     app.run(debug=True, host='0.0.0.0', port=5001)
