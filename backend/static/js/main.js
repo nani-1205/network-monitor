@@ -90,8 +90,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 series: [
                     {
                         type: 'sankey',
-                        layout: 'none',
-                        circularLayout: true, // <-- THE FIX FOR CYCLES
+                        
+                        // THIS LINE HAS BEEN REMOVED
+                        // layout: 'none', 
+                        
+                        // This line will now work correctly without the conflict
+                        circularLayout: true,
+                        
                         emphasis: { focus: 'adjacency' },
                         data: data.nodes,
                         links: data.links,
@@ -105,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             myChart.hideLoading();
             loadingMessage.classList.add('hidden');
-            myChart.setOption(chartOption);
+            myChart.setOption(chartOption, true); // Added 'true' to ensure options are not merged
 
         } catch (error) {
             console.error('Error fetching/drawing chart:', error);
@@ -116,12 +121,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     refreshBtn.addEventListener('click', () => {
-        loadHosts();
-        fetchAndDrawChart();
+        fetchAndDrawChart(); // Just redraw chart, no need to reload hosts
     });
 
-    loadHosts();
-    fetchAndDrawChart();
+    // Initial load
+    loadHosts().then(fetchAndDrawChart);
     
     window.addEventListener('resize', () => {
         myChart.resize();
