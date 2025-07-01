@@ -22,7 +22,7 @@ def index():
 def get_hosts():
     try:
         pipeline = [
-            {'$match': {"src_ip": {"$ne": "0.0.0.0"}, "dst_ip": {"$ne": "0.0.0.0"}}},
+            {"$match": {"src_ip": {"$ne": "0.0.0.0"}, "dst_ip": {"$ne": "0.0.0.0"}}},
             {'$group': {'_id': '$src_ip'}},
             {'$group': {'_id': None, 'src_ips': {'$addToSet': '$_id'}}},
             {'$lookup': {
@@ -52,12 +52,16 @@ def get_traffic_data():
             "dst_ip": {"$ne": None, "$exists": True, "$ne": "0.0.0.0"}
         }},
         {"$group": {
-            "_id": {"source": "$src_ip", "target": "$dst_ip", "protocol": "$protocol"},
-            "value": {"$sum": "$size"}
+            "_id": {"source": "$src_ip", "target": "$dst_ip"},
+            "value": {"$sum": "$size"},
+            "protocols": {"$addToSet": "$protocol"}
         }},
         {"$project": {
             "_id": 0, "source": "$_id.source", "target": "$_id.target",
-            "protocol": "$_id.protocol", "value": "$value"
+            "value": "$value", "protocol": {"$reduce": {
+                "input": "$protocols", "initialValue": "",
+                "in": {"$concat": ["$$value", "$$this", ", "]}
+            }}
         }}
     ]
 
@@ -66,6 +70,7 @@ def get_traffic_data():
         if not flows:
             return jsonify({"nodes": [], "links": []})
 
+        # --- Build Node List and Name Map ---
         all_ips = set()
         for flow in flows:
             all_ips.add(flow['source'])
@@ -73,26 +78,57 @@ def get_traffic_data():
             
         nodes = []
         node_name_map = {} 
-        
         for ip in sorted(list(all_ips)):
             name = f"[S] {ip}" if ip in server_ips else f"[C] {ip}"
             nodes.append({"name": name})
             node_name_map[ip] = name
 
-        links = []
-        for flow in flows:
-            source_ip = flow.get('source')
-            target_ip = flow.get('target')
-            
-            if source_ip in node_name_map and target_ip in node_name_map:
-                links.append({
-                    "source": node_name_map[source_ip],
-                    "target": node_name_map[target_ip],
-                    "value": flow['value'],
-                    "protocol": flow['protocol']
-                })
+        # ++++++++ THE DEFINITIVE FIX: CONSOLIDATE CYCLES ++++++++
         
-        return jsonify({"nodes": nodes, "links": links})
+        # 1. Create a lookup map for fast access
+        flow_map = {(f['source'], f['target']): f for f in flows}
+        processed_flows = set()
+        consolidated_links = []
+
+        for flow in flows:
+            source, target = flow['source'], flow['target']
+            
+            # Skip if we've already handled this flow as part of a pair
+            if (source, target) in processed_flows:
+                continue
+
+            # Look for the reverse flow
+            reverse_flow = flow_map.get((target, source))
+
+            if reverse_flow:
+                # CYCLE DETECTED: Consolidate into one link
+                combined_value = flow['value'] + reverse_flow['value']
+                # Clean up protocol strings
+                protocol1 = flow['protocol'].strip(', ')
+                protocol2 = reverse_flow['protocol'].strip(', ')
+                combined_protocol = f"{protocol1} <-> {protocol2}"
+
+                consolidated_links.append({
+                    "source": node_name_map[source],
+                    "target": node_name_map[target],
+                    "value": combined_value,
+                    "protocol": combined_protocol
+                })
+                # Mark both directions as processed
+                processed_flows.add((source, target))
+                processed_flows.add((target, source))
+            else:
+                # NO CYCLE: This is a one-way link
+                consolidated_links.append({
+                    "source": node_name_map[source],
+                    "target": node_name_map[target],
+                    "value": flow['value'],
+                    "protocol": flow['protocol'].strip(', ')
+                })
+                # Mark as processed
+                processed_flows.add((source, target))
+
+        return jsonify({"nodes": nodes, "links": consolidated_links})
 
     except Exception as e:
         print(f"Error fetching traffic data: {e}")
