@@ -61,6 +61,16 @@ def get_traffic_data():
     server_ips = request.args.getlist('servers[]')
 
     pipeline = [
+        # STAGE 1: Filter out any documents that are missing an IP address.
+        # This prevents server-side errors if the data is incomplete.
+        {
+            "$match": {
+                "src_ip": {"$ne": None, "$exists": True},
+                "dst_ip": {"$ne": None, "$exists": True}
+            }
+        },
+        
+        # STAGE 2: Group the valid data to aggregate traffic size.
         {
             "$group": {
                 "_id": {
@@ -90,8 +100,10 @@ def get_traffic_data():
         # --- Process data for Sankey format ---
         all_ips = set()
         for flow in flows:
-            all_ips.add(flow['source'])
-            all_ips.add(flow['target'])
+            # We already filtered for nulls, but this is a safe double-check
+            if flow.get('source') and flow.get('target'):
+                all_ips.add(flow['source'])
+                all_ips.add(flow['target'])
 
         # Nodes are all the unique IPs
         nodes = [{"name": ip} for ip in sorted(list(all_ips))]
@@ -106,7 +118,10 @@ def get_traffic_data():
         # Links are the flows between nodes
         links = []
         for flow in flows:
-            # We need to match the source/target with the modified node names
+            # Check if source and target exist before creating a link
+            if not (flow.get('source') and flow.get('target')):
+                continue
+
             source_name = f"[S] {flow['source']}" if flow['source'] in server_ips else f"[C] {flow['source']}"
             target_name = f"[S] {flow['target']}" if flow['target'] in server_ips else f"[C] {flow['target']}"
 
@@ -124,4 +139,5 @@ def get_traffic_data():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
+    # Changed host to 0.0.0.0 to be accessible from other machines on the network
     app.run(debug=True, host='0.0.0.0', port=5001)

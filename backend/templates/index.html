@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Network Analytics Report</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <!-- Apache ECharts -->
+    <!-- Include the ECharts library from a CDN -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.3.3/dist/echarts.min.js"></script>
 </head>
 <body>
@@ -26,6 +26,7 @@
                 </div>
             </div>
             <div class="content">
+                <!-- This div is the container where the chart will be drawn -->
                 <div id="sankey-chart"></div>
                  <div id="loading-message" class="hidden">
                     <p>Loading traffic data... If this persists, the capture script may not be running or no traffic has been detected yet.</p>
@@ -34,6 +35,7 @@
         </main>
     </div>
 
+    <!-- Link to our custom JavaScript file that will draw the chart -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

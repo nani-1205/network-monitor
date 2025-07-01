@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const data = await response.json();
             
-            if (data.nodes.length === 0) {
+            if (!data.nodes || data.nodes.length === 0) {
                 myChart.hideLoading();
                 loadingMessage.classList.add('hidden');
                  myChart.clear(); // Clear previous chart
